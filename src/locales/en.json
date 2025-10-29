@@ -1,0 +1,18 @@
+{
+"choosed.attachment": "Please choose/add a column of attachment type field",
+"choose.table": "Please choose a data table",
+"choose": "Please choose",
+"with.field": "Skip cells with existing attachments",
+"start.btn": "Start batch conversion",
+"err.url": "Please choose the source of attachment URLs",
+"err.table": "Please choose a table first",
+"success": "All convertible URLs have been processed",
+"some.err": "{{num}} URLs failed to convert, please check if the URLs are public resources.",
+"choose.url": "URL field to convert",
+"to.attachment": "Attachment field to convert to",
+"add.field": "Add a column of attachment type field",
+"trans.num": "{{num}} URLs have been converted",
+"support.desc": "Supports converting public resource urls that allow third-party access to attachments. If the conversion fails due to cross-domain issues, please refer to using the backend plug-in:",
+"load_error.1":"After running the project, please get the webview address and paste it into the multidimensional table \"Extended Script\" for use. See: ",
+  "load.guide": "Development Guide"
+}
