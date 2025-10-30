@@ -1,48 +1,51 @@
-import React, { useEffect, useState } from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import { initI18n } from './i18n'
-import { bitable } from '@base-open/web-api'
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import { initI18n } from "./i18n";
+import { bitable } from "@lark-base-open/js-sdk";
+import { useTranslation } from "react-i18next";
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+const container = document.getElementById("root");
+const root = createRoot(container! as HTMLElement); // createRoot(container!) if you use TypeScript
+root.render(
   <React.StrictMode>
     <LoadApp />
   </React.StrictMode>
-)
+);
 
 function LoadApp() {
-
   const [load, setLoad] = useState(false);
-  const [loadErr, setLoadErr] = useState<any>(null)
+  const [loadErr, setLoadErr] = useState<any>(null);
   useEffect(() => {
     const timer = setTimeout(() => {
-      initI18n('en');
+      initI18n("en");
       setTimeout(() => {
-        setLoadErr(<LoadErr />)
-
-      }, 1000)
-    }, 5000)
+        setLoadErr(<LoadErr />);
+      }, 1000);
+    }, 5000);
     bitable.bridge.getLanguage().then((lang) => {
-      clearTimeout(timer)
+      clearTimeout(timer);
       initI18n(lang as any);
       setLoad(true);
     });
-    return () => clearTimeout(timer)
-  }, [])
+    return () => clearTimeout(timer);
+  }, []);
 
   if (load) {
-    return <App />
+    return <App />;
   }
 
-  return loadErr
+  return loadErr;
 }
 
 function LoadErr() {
   const { t } = useTranslation();
-  return <div>
-    {t('load_error.1')}
-    <a target='_blank' href='https://bytedance.feishu.cn/docx/HazFdSHH9ofRGKx8424cwzLlnZc'>{t('load.guide')}</a>
-  </div>
-
+  return (
+    <div>
+      {t("load_error.1")}
+      <a target="_blank" href="https://bytedance.feishu.cn/docx/HazFdSHH9ofRGKx8424cwzLlnZc">
+        {t("load.guide")}
+      </a>
+    </div>
+  );
 }

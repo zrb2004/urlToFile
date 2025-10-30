@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { up, recordValueCache, urlUploadId, downloadErr, successSet, clearCache } from './utils'
-import { Form, Button, Toast, Banner, Spin, Tooltip } from '@douyinfe/semi-ui'
-import { IFieldMeta as FieldMeta, IWidgetTable, FieldType, IOpenSegmentType, TableMeta, bitable } from '@base-open/web-api'
-import './App.css'
-import { icons } from './icons'
-import { useTranslation } from 'react-i18next';
-
+import { useState, useEffect, useRef, useMemo } from "react";
+import { up, recordValueCache, urlUploadId, downloadErr, successSet, clearCache } from "./utils";
+import { Form, Button, Toast, Banner, Spin, Tooltip } from "@douyinfe/semi-ui";
+import { IFieldMeta as FieldMeta, ITable, FieldType, IOpenSegmentType, ITableMeta, bitable } from "@lark-base-open/js-sdk";
+import "./App.css";
+import { icons } from "./icons";
+import { useTranslation } from "react-i18next";
 
 //@ts-ignore
-window.bitable = bitable
+window.bitable = bitable;
 
 let moreConfig = {
   /** 为true的时候表示，单元格如果有值，则不设置这个单元格,key为checkbox的value属性 */
@@ -52,7 +51,7 @@ const taskIterator = {
 /** 表格，字段变化的时候刷新插件 */
 export default function Ap() {
   const [key, setKey] = useState<string | number>(0);
-  const [tableList, setTableList] = useState<IWidgetTable[]>([]);
+  const [tableList, setTableList] = useState<ITable[]>([]);
   // 绑定过的tableId
   const bindList = useRef<Set<string>>(new Set());
 
@@ -84,7 +83,7 @@ export default function Ap() {
   }, []);
 
   useEffect(() => {
-    if (tableList.length) {
+    if (tableList && tableList.length) {
       tableList.forEach((table) => {
         if (bindList.current.has(table.id)) {
           return;
@@ -103,20 +102,20 @@ export default function Ap() {
 function UrlToFile() {
   const { t } = useTranslation();
   const [btnDisabled, setBtnDisabled] = useState(true);
-  const [tableMetaList, setTableMetaList] = useState<TableMeta[]>();
-  const [tableLoading, setTableLoading] = useState(false)
+  const [tableMetaList, setTableMetaList] = useState<ITableMeta[]>();
+  const [tableLoading, setTableLoading] = useState(false);
   const [tableId, setTableId] = useState<string>();
   const formApi = useRef<any>();
   const [, f] = useState();
   _forceUpdate = f;
-  const [table, setTable] = useState<IWidgetTable>();
+  const [table, setTable] = useState<ITable>();
   const filedInfo = useRef<{
     url: FieldMeta[];
     file: FieldMeta[];
   }>({ url: [], file: [] });
 
   useEffect(() => {
-    setTableLoading(true)
+    setTableLoading(true);
     bitable.base.getTableMetaList().then(async (r) => {
       setTableMetaList(r.filter(({ name }) => name));
       const choosedTableId = (await bitable.base.getSelection()).tableId;
@@ -124,18 +123,18 @@ function UrlToFile() {
         table: choosedTableId,
         others: Object.entries(moreConfig)
           .filter(([k, v]) => v)
-          .map(([k, v]) => k)
+          .map(([k, v]) => k),
       });
       setTableId(choosedTableId!);
-      setTableLoading(false)
-    })
+      setTableLoading(false);
+    });
   }, []);
 
   const init = () => {
     clearCache();
     taskIterator.allUrl.clear();
     taskIterator.allTasks = [];
-  }
+  };
 
   useEffect(() => {
     if (!tableId) {
@@ -178,7 +177,7 @@ function UrlToFile() {
 
           filedInfo.current.file = fileArr;
 
-          setLoading(false)
+          setLoading(false);
           forceUpdateCom();
         });
       });
@@ -188,7 +187,7 @@ function UrlToFile() {
   const onClickStart = async () => {
     const { url: urlFieldId, file: fileFieldId } = formApi.current.getValues();
     if (!fileFieldId) {
-      Toast.error(t('choose.attachment'));
+      Toast.error(t("choose.attachment"));
       return;
     }
     if (!urlFieldId) {
@@ -208,36 +207,60 @@ function UrlToFile() {
     // 遍历url的字段，找出这些字段中的url,然后在recordValueCache记录它对应的附件字段单元格所需要的附件个数
     // 在urlUploadId统计每个url将被哪些附件单元格所需要，以避免重复下载url，上传文件
     // taskIterator记录每个url，单元格，创建转换任务的信息
-    urlValueList.forEach(({ record_id, value }, index) => {
+    urlValueList?.forEach(({ record_id, value }, index) => {
       const tableIdRecordId = `${table.id}_${record_id}_${fileFieldId}`;
-      if (Array.isArray(value)) {
-        value.forEach(({ type, link }: any) => {
-          if (type === IOpenSegmentType.Url) {
-            if (!recordValueCache[tableIdRecordId]) {
-              recordValueCache[tableIdRecordId] = {
-                shouldLoadFile: 1,
-                uploadStatus: [],
-              };
-            } else {
-              recordValueCache[tableIdRecordId].shouldLoadFile += 1;
+      if (value && Array.isArray(value)) {
+        value.forEach(({ type, text }: any) => {
+          if (type === IOpenSegmentType.Text) {
+            if (typeof text === "string") {
+              // 修复分隔符处理逻辑
+              if (String(text).indexOf(",") > -1) {
+                text = text.split(",");
+              } else if (String(text).indexOf(";") > -1) {
+                text = text.split(";");
+              } else if (String(text).indexOf(" ") > -1) {
+                text = text.split(" ");
+              } else {
+                // 如果没有分隔符，则作为一个单独的URL处理
+                text = [text];
+              }
             }
-            if (!urlUploadId[link]) {
-              urlUploadId[link] = {
-                tableRecord: new Set([tableIdRecordId]),
-              };
-            } else {
-              urlUploadId[link].tableRecord.add(tableIdRecordId);
+            // 确保text是数组格式
+            if (!Array.isArray(text)) {
+              text = [text];
             }
+            if (text && Array.isArray(text)) {
+              text.forEach((t) => {
+                // 过滤空字符串
+                if (typeof t === "string" && t.trim() !== "") {
+                  if (!recordValueCache[tableIdRecordId]) {
+                    recordValueCache[tableIdRecordId] = {
+                      shouldLoadFile: 1,
+                      uploadStatus: [],
+                    };
+                  } else {
+                    recordValueCache[tableIdRecordId].shouldLoadFile += 1;
+                  }
+                  if (!urlUploadId[t]) {
+                    urlUploadId[t] = {
+                      tableRecord: new Set([tableIdRecordId]),
+                    };
+                  } else {
+                    urlUploadId[t].tableRecord.add(tableIdRecordId);
+                  }
 
-            allTasks.push({
-              url: link,
-              table,
-              index,
-              recordId: record_id,
-              fieldId: fileFieldId,
-              filename: link.split("/").slice(-1)[0].split("?")[0],
-            });
-            taskIterator.allUrl.add(link);
+                  allTasks.push({
+                    url: t,
+                    table,
+                    index,
+                    recordId: record_id,
+                    fieldId: fileFieldId,
+                    filename: new Date().getTime() + "",
+                  });
+                  taskIterator.allUrl.add(t);
+                }
+              });
+            }
           }
         });
       }
@@ -254,9 +277,9 @@ function UrlToFile() {
           }, 100);
           setTimeout(() => {
             if (Object.keys(downloadErr).length) {
-              Toast.error(t('some.err', { num: Object.keys(downloadErr).length }));
+              Toast.error(t("some.err", { num: Object.keys(downloadErr).length }));
             } else {
-              Toast.success(t('success'));
+              Toast.success(t("success"));
             }
           }, 500);
         }
@@ -275,25 +298,24 @@ function UrlToFile() {
     }
   };
 
-
   return (
     <div>
-      <p>{t('support.desc')} <a href='https://bytedance.feishu.cn/docx/PT4Nd1vYJoqRjSxWm8YcCxPMnDd?theme=LIGHT&contentTheme=DARK' target="_blank">URLToFile</a></p>
+      <p>
+        {t("support.desc")}{" "}
+        {/* <a href="https://bytedance.feishu.cn/docx/PT4Nd1vYJoqRjSxWm8YcCxPMnDd?theme=LIGHT&contentTheme=DARK" target="_blank">
+          URLToFile
+        </a> */}
+      </p>
       {/* 请设置url字段和保存附件的字段，即可批量处理 */}
       <Spin spinning={loading || tableLoading}>
         <Form
           onChange={onFormChange}
           disabled={loading}
-          getFormApi={(e) => {
+          getFormApi={(e: any) => {
             formApi.current = e;
           }}
         >
-          <Form.Select
-            style={{ width: "100%" }}
-            onChange={(tableId) => setTableId(tableId as string)}
-            field="table"
-            label={t('choose.table')}
-          >
+          <Form.Select style={{ width: "100%" }} onChange={(tableId) => setTableId(tableId as string)} field="table" label={t("choose.table")}>
             {Array.isArray(tableMetaList) &&
               tableMetaList.map(({ id, name }) => (
                 <Form.Select.Option key={id} value={id}>
@@ -301,12 +323,7 @@ function UrlToFile() {
                 </Form.Select.Option>
               ))}
           </Form.Select>
-          <Form.Select
-            style={{ width: "100%" }}
-            field="url"
-            label={t('choose.url')}
-            placeholder={t('choose')}
-          >
+          <Form.Select style={{ width: "100%" }} field="url" label={t("choose.url")} placeholder={t("choose")}>
             {filedInfo.current.url.map((m) => {
               return (
                 <Form.Select.Option value={m.id} key={m.id}>
@@ -320,12 +337,7 @@ function UrlToFile() {
             })}
           </Form.Select>
           {filedInfo.current.file.length > 0 ? (
-            <Form.Select
-              style={{ width: "100%" }}
-              field="file"
-              label={t('to.attachment')}
-              placeholder={t('choose')}
-            >
+            <Form.Select style={{ width: "100%" }} field="file" label={t("to.attachment")} placeholder={t("choose")}>
               {filedInfo.current.file.map((m) => {
                 return (
                   <Form.Select.Option value={m.id} key={m.id}>
@@ -349,32 +361,26 @@ function UrlToFile() {
                     });
                   }}
                 >
-                  {t('add.field')}
+                  {t("add.field")}
                 </Button>
               </div>
             )
           )}
           <Form.CheckboxGroup
-            onChange={(e) => {
-              moreConfig = Object.fromEntries(e.map((k) => [k, true]));
+            onChange={(e: any) => {
+              moreConfig = { ...moreConfig, ...Object.fromEntries(e.map((k: any) => [k, true])) };
               forceUpdateCom();
             }}
             field="others"
             label=" "
           >
-            <Form.Checkbox value="cover">{t('with.field')}</Form.Checkbox>
+            <Form.Checkbox value="cover">{t("with.field")}</Form.Checkbox>
           </Form.CheckboxGroup>
-
         </Form>
-      </Spin> <br></br>
-      <Button
-        disabled={btnDisabled}
-        type="primary"
-        className="bt1"
-        loading={loading}
-        onClick={onClickStart}
-      >
-        {t('start.btn')}
+      </Spin>{" "}
+      <br></br>
+      <Button disabled={btnDisabled} type="primary" className="bt1" loading={loading} onClick={onClickStart}>
+        {t("start.btn")}
       </Button>
       {/* 
             目前还不支持列出record所在的索引，后续支持的时候将会列出失败url以及它所在的行
@@ -398,20 +404,12 @@ function UrlToFile() {
           }}
         >
           <div style={{ width: "280px" }}>
-            <Banner
-              style={{ flexGrow: 2 }}
-              closeIcon={null}
-              icon={null}
-              fullMode={false}
-              bordered
-            >
+            <Banner style={{ flexGrow: 2 }} closeIcon={null} icon={null} fullMode={false} bordered>
               <div style={{ display: "flex", gap: "20px", justifyContent: "center" }}>
                 <div style={{ marginLeft: 10 }}>
                   <Spin />
                 </div>
-                <div>
-                  {t('trans.num', { num: `${successSet.size}/${taskIterator.allUrl.size}` })}
-                </div>
+                <div>{t("trans.num", { num: `${successSet.size}/${taskIterator.allUrl.size}` })}</div>
               </div>
             </Banner>
           </div>
@@ -420,13 +418,3 @@ function UrlToFile() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
