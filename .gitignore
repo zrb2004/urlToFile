@@ -20,3 +20,5 @@ yarn-error.log*
 
 .config
 package-lock.json
+
+.vercel
