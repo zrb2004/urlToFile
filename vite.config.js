@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: "./",// 使用相对路径
   plugins: [
     react({
       // 确保使用React 18的新API
